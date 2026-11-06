@@ -1,1 +1,1 @@
-export { default } from '../server/vercelHandler'
+export { default } from '../server/vercelHandler.js'
