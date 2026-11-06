@@ -22,7 +22,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const ref = useRef<Session | null>(null)
   ref.current = session
   const timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => { authService.restore().then(setSession).catch(() => setSession(null)).finally(() => setLoading(false)) }, [])
+  useEffect(() => {
+    authService.restore()
+      .then(async restored => {
+        // Local development uses a shared demo admin account. Do not silently
+        // reopen that privileged session when the app is revisited or refreshed.
+        if (import.meta.env.DEV && restored?.user.role === 'admin') {
+          await authService.logout()
+          setSession(null)
+          return
+        }
+        setSession(restored)
+      })
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false))
+  }, [])
   // The server says our session is gone (expired, revoked after a password change elsewhere): fall back to the signed-out state.
   useEffect(() => { const out = () => setSession(null); window.addEventListener('slotwork:signed-out', out); return () => window.removeEventListener('slotwork:signed-out', out) }, [])
 
