@@ -10,6 +10,7 @@ import { dropSession, endSession, LOCK_MS, MAX_FAILS, requireAuth, startSession,
 import { loginSchema, registerSchema, emailSchema, passwordSchema } from '../schemas'
 import { toSession, type UserRow } from '../mappers'
 import { notify } from '../notify'
+import { persistentAuthEnabled, persistentClearLoginAttempts, persistentCreateUser, persistentDeleteUserSessions, persistentFindUser, persistentLoginAttempts, persistentSaveUser, persistentSetLoginAttempts } from '../persistentAuth'
 
 const BAD_LOGIN = 'Email or password is incorrect.'
 export const RESET_TTL_MS = 60 * 60_000, MAX_RESETS_PER_HOUR = 3
@@ -21,34 +22,44 @@ export function authRoutes(ctx: Ctx, limiter: RequestHandler) {
 
   r.post('/register', limiter, async (req, res) => {
     const b = parse(registerSchema, req.body)
-    if (get(db, 'SELECT 1 FROM users WHERE email = ?', b.email)) throw conflict('An account with this email already exists.')
+    if (get(db, 'SELECT 1 FROM users WHERE email = ?', b.email) || (persistentAuthEnabled() && await persistentFindUser(b.email))) throw conflict('An account with this email already exists.')
     const id = randomUUID()
-    run(db, 'INSERT INTO users (id, email, name, role, pw_hash, onboarded, created_at) VALUES (?,?,?,?,?,?,?)', id, b.email, b.name, b.role, await hashPassword(b.password), b.role === 'seeker' ? 0 : 1, new Date(ctx.now()).toISOString())
+    const user: UserRow = { id, email: b.email, name: b.name, role: b.role, pw_hash: await hashPassword(b.password), onboarded: b.role === 'seeker' ? 0 : 1, profile: null, company: null, created_at: new Date(ctx.now()).toISOString() }
+    if (persistentAuthEnabled()) {
+      try { await persistentCreateUser(user) } catch (e) { if ((e as { code?: string }).code === '23505') throw conflict('An account with this email already exists.'); throw e }
+    }
+    run(db, 'INSERT INTO users (id, email, name, role, pw_hash, onboarded, created_at) VALUES (?,?,?,?,?,?,?)', id, b.email, b.name, b.role, user.pw_hash, user.onboarded, user.created_at)
     notify(db, b.role === 'seeker'
       ? { userId: id, category: 'system', kind: 'system.welcome.seeker', body: 'Welcome to Slotwork! Finish your profile so we can match you with jobs that fit your schedule.', link: '/onboarding' }
       : { userId: id, category: 'system', kind: 'system.welcome.employer', body: 'Welcome to Slotwork! Post your first job to start receiving applications.', link: '/employer/jobs/new' })
-    dropSession(ctx, req); startSession(ctx, res, id)
+    await dropSession(ctx, req); await startSession(ctx, res, id)
     res.status(201).json({ session: sessionOf(ctx, id) })
   })
 
   r.post('/login', limiter, async (req, res) => {
     const { email, password } = parse(loginSchema, req.body), now = ctx.now()
-    const att = get<{ fails: number; first_at: number; locked_until: number }>(db, 'SELECT * FROM login_attempts WHERE email = ?', email)
+    const att = persistentAuthEnabled() ? await persistentLoginAttempts(email) : get<{ fails: number; first_at: number; locked_until: number }>(db, 'SELECT * FROM login_attempts WHERE email = ?', email)
     if (att && att.locked_until > now) { const m = Math.ceil((att.locked_until - now) / 60_000); throw new ApiError(429, `Too many failed attempts. Try again in ${m} minute${m === 1 ? '' : 's'}.`, 'locked') }
-    const u = get<UserRow>(db, 'SELECT * FROM users WHERE email = ?', email)
+    const u = persistentAuthEnabled() ? await persistentFindUser(email) : get<UserRow>(db, 'SELECT * FROM users WHERE email = ?', email)
     const okPw = u ? await verifyPassword(password, u.pw_hash) : (await burnVerify(password), false)   // unknown emails cost the same time
     if (!u || !okPw) {
       const fresh = !att || now - att.first_at > WINDOW_MS, fails = fresh ? 1 : att.fails + 1
-      run(db, 'INSERT INTO login_attempts (email, fails, first_at, locked_until) VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET fails = excluded.fails, first_at = excluded.first_at, locked_until = excluded.locked_until',
-        email, fails, fresh ? now : att.first_at, fails >= MAX_FAILS ? now + LOCK_MS : 0)
+      if (persistentAuthEnabled()) await persistentSetLoginAttempts(email, fails, fresh ? now : att.first_at, fails >= MAX_FAILS ? now + LOCK_MS : 0)
+      else run(db, 'INSERT INTO login_attempts (email, fails, first_at, locked_until) VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET fails = excluded.fails, first_at = excluded.first_at, locked_until = excluded.locked_until', email, fails, fresh ? now : att.first_at, fails >= MAX_FAILS ? now + LOCK_MS : 0)
       throw new ApiError(401, BAD_LOGIN, 'bad_credentials')
     }
-    run(db, 'DELETE FROM login_attempts WHERE email = ?', email)
-    dropSession(ctx, req); startSession(ctx, res, u.id)   // fresh token on every login (no session fixation)
+    if (persistentAuthEnabled()) {
+      await persistentClearLoginAttempts(email)
+      await persistentSaveUser(u)
+    } else run(db, 'DELETE FROM login_attempts WHERE email = ?', email)
+    run(db, `INSERT INTO users (id,email,name,role,pw_hash,onboarded,profile,company,created_at) VALUES (?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name,role=excluded.role,pw_hash=excluded.pw_hash,onboarded=excluded.onboarded,profile=excluded.profile,company=excluded.company`,
+      u.id, u.email, u.name, u.role, u.pw_hash, u.onboarded, u.profile, u.company, u.created_at)
+    await dropSession(ctx, req); await startSession(ctx, res, u.id)   // fresh token on every login (no session fixation)
     res.json({ session: toSession(u) })
   })
 
-  r.post('/logout', (req, res) => { endSession(ctx, req, res); res.status(204).end() })
+  r.post('/logout', async (req, res) => { await endSession(ctx, req, res); res.status(204).end() })
 
   /** Mail is sent in the background and failures are only logged, so the response never reveals whether an account exists or whether delivery worked. */
   const sendMail = (to: string, content: { subject: string; text: string; html: string }) => { ctx.mailer.send({ to, ...content }).catch(e => console.error(`Email to ${to} failed: ${(e as Error).message}`)) }
@@ -99,6 +110,11 @@ export function authRoutes(ctx: Ctx, limiter: RequestHandler) {
       return u
     })
     if (!done) throw new ApiError(400, INVALID_LINK, 'invalid_token')
+    if (persistentAuthEnabled()) {
+      await persistentSaveUser(done)
+      await persistentDeleteUserSessions(done.id)
+      await persistentClearLoginAttempts(done.email)
+    }
     sendMail(done.email, renderEmail('changed', lang as MailLang, { name: done.name, link: `${ctx.cfg.mail.appUrl}/forgot-password` }))
     res.status(204).end()
   })

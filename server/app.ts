@@ -3,7 +3,7 @@ import path from 'node:path'
 import express from 'express'
 import helmet from 'helmet'
 import type { Config } from './config'
-import { openDb } from './db'
+import { all, openDb } from './db'
 import type { Ctx } from './context'
 import { ApiError, errorHandler } from './http'
 import { authenticate } from './auth'
@@ -17,6 +17,8 @@ import { notificationRoutes, reportRoutes, savedRoutes } from './routes/misc'
 import { adminRoutes } from './routes/admin'
 import { ensureAdmin, seedDemo } from './seed'
 import { createMailer, type Mailer } from './mail/mailer'
+import { persistentAuthEnabled, persistentSaveUser } from './persistentAuth'
+import type { UserRow } from './mappers'
 
 export interface AppOptions { now?: () => number; mailer?: Mailer; limits?: { global: number; auth: number } }
 /** Builds the whole server (API + static site). Tests call this with an in-memory database. */
@@ -24,6 +26,9 @@ export async function createApp(cfg: Config, opts: AppOptions = {}) {
   const db = openDb(cfg.dbPath), ctx: Ctx = { db, cfg, now: opts.now ?? Date.now, mailer: opts.mailer ?? createMailer(cfg.mail) }
   if (cfg.seedDemo) await seedDemo(ctx)
   await ensureAdmin(ctx)
+  if (cfg.seedDemo && persistentAuthEnabled()) {
+    for (const user of all<UserRow>(db, 'SELECT * FROM users WHERE email IN (?,?,?)', 'seeker@demo.test', 'employer@demo.test', 'admin@demo.test')) await persistentSaveUser(user)
+  }
 
   const app = express()
   app.disable('x-powered-by')
