@@ -1,0 +1,15 @@
+@tailwind base;@tailwind components;@tailwind utilities;
+body{@apply bg-lav text-ink font-sans antialiased}
+.dark body{@apply bg-[#0A0E26] text-slate-100}
+
+/* keep content clear of phone notches and home bars */
+#root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+
+/* Text and fill colours tuned to pass WCAG AA (4.5:1) in both themes */
+:root{--brandfg:#334FDE;--mintfg:#0C724E;--amberfg:#8E5C06;--redfg:#B13232;--cyanfg:#066B84;--skyfg:#02679B;--violetfg:#6941D9;--muted:#566377;--mintfill:#0E845B;--amberfill:#A26807;--redfill:#D53D3D}
+.dark{--brandfg:#7C91FF;--mintfg:#20BC84;--amberfg:#F59E0B;--redfg:#F37171;--cyanfg:#41AAC4;--skyfg:#46A5D6;--violetfg:#A584FF;--muted:#8D9AB0}
+
+/* A grid's implicit column is `auto`, which grows to its widest child's min-content (e.g. the 560px schedule grid) and
+   pushes the page past a phone screen. minmax(0,1fr) lets tracks shrink; grid-cols-* utilities still override this. */
+@layer components { .grid { grid-template-columns: minmax(0, 1fr); } }
