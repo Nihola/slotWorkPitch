@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import type { Ctx } from '../context'
-import { all, get, run, tx } from '../db'
-import { bad, notFound, parse } from '../http'
-import { requireAuth } from '../auth'
-import { messageSchema } from '../schemas'
-import { toConversation, type ConvRow } from '../mappers'
-import { notify } from '../notify'
+import { all, get, run, tx } from '../db.js'
+import { bad, notFound, parse } from '../http.js'
+import { requireAuth } from '../auth.js'
+import { messageSchema } from '../schemas.js'
+import { toConversation, type ConvRow } from '../mappers.js'
+import { notify } from '../notify.js'
 import type { Message } from '../../src/types'
 
 export function chatRoutes(ctx: Ctx) {

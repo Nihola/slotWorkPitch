@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import { get, run, tx } from './db'
+import { get, run, tx } from './db.js'
 import type { Ctx } from './context'
-import { hashPassword } from './security'
-import { jobs } from '../src/data/jobs'
-import { mockSeeker } from '../src/services/mockSeeker'
-import { jobData } from './routes/jobs'
-import { validatePassword, validateEmail } from '../src/utils/validation'
+import { hashPassword } from './security.js'
+import { jobs } from '../src/data/jobs.js'
+import { mockSeeker } from '../src/services/mockSeeker.js'
+import { jobData } from './routes/jobs.js'
+import { validatePassword, validateEmail } from './validation.js'
 
 export const DEMO_PASSWORD = 'demo1234'
 const ago = (now: number, min: number) => new Date(now - min * 60_000).toISOString()

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { loadConfig } from './config'
-import { createApp } from './app'
+import { loadConfig } from './config.js'
+import { createApp } from './app.js'
 
 const config = loadConfig({
   ...process.env,

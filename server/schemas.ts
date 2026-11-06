@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { validateEmail, validatePassword } from '../src/utils/validation'
+import { validateEmail, validatePassword } from './validation.js'
 
 export const JOB_TYPES = ['one-time', 'short-term', 'part-time', 'full-time', 'shift-based', 'remote'] as const
 const jobType = z.enum(JOB_TYPES, { message: 'Choose a job type.' })

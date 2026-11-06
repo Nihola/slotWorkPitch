@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import type { Ctx } from '../context'
-import { all, get, run } from '../db'
-import { conflict, notFound, parse } from '../http'
-import { requireAuth, requireRole } from '../auth'
-import { reportSchema } from '../schemas'
-import { toNotification, type NotifRow } from '../mappers'
+import { all, get, run } from '../db.js'
+import { conflict, notFound, parse } from '../http.js'
+import { requireAuth, requireRole } from '../auth.js'
+import { reportSchema } from '../schemas.js'
+import { toNotification, type NotifRow } from '../mappers.js'
 
 export function notificationRoutes(ctx: Ctx) {
   const r = Router(), { db } = ctx; r.use(requireAuth)

@@ -1,6 +1,6 @@
 import { scrypt as _scrypt, randomBytes, timingSafeEqual, createHash } from 'node:crypto'
 import type { Request, RequestHandler, Response } from 'express'
-import { ApiError } from './http'
+import { ApiError } from './http.js'
 
 // --- passwords: scrypt with a random salt per password
 const N = 16384, R = 8, P = 1

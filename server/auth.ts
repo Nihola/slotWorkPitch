@@ -1,12 +1,12 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
-import { get, run } from './db'
+import { get, run } from './db.js'
 import type { Ctx } from './context'
-import { ApiError } from './http'
-import { clearSessionCookie, COOKIE, newToken, readCookie, setSessionCookie, sha256 } from './security'
+import { ApiError } from './http.js'
+import { clearSessionCookie, COOKIE, newToken, readCookie, setSessionCookie, sha256 } from './security.js'
 import type { UserRow } from './mappers'
-import { toUser } from './mappers'
+import { toUser } from './mappers.js'
 import type { Role } from '../src/types'
-import { persistentCreateSession, persistentDeleteSession, persistentUserBySession, persistentAuthEnabled } from './persistentAuth'
+import { persistentCreateSession, persistentDeleteSession, persistentUserBySession, persistentAuthEnabled } from './persistentAuth.js'
 
 export const SESSION_MS = 7 * 24 * 3600_000
 export const MAX_FAILS = 5, WINDOW_MS = 15 * 60_000, LOCK_MS = 15 * 60_000

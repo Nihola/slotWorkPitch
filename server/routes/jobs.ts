@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import type { Ctx } from '../context'
-import { all, get, run, tx } from '../db'
-import { ApiError, conflict, notFound, parse } from '../http'
-import { requireAuth, requireRole } from '../auth'
-import { jobSchema } from '../schemas'
-import { toJob, type JobRow, type UserRow } from '../mappers'
+import { all, get, run, tx } from '../db.js'
+import { ApiError, conflict, notFound, parse } from '../http.js'
+import { requireAuth, requireRole } from '../auth.js'
+import { jobSchema } from '../schemas.js'
+import { toJob, type JobRow, type UserRow } from '../mappers.js'
 import type { CompanyProfile } from '../../src/types'
-import { addLog } from './moderationLog'
+import { addLog } from './moderationLog.js'
 
 export const jobData = (j: Record<string, unknown>) => { const { id, employerId, moderation, moderationNote, postedAt, ...rest } = j; void id; void employerId; void moderation; void moderationNote; void postedAt; return JSON.stringify(rest) }
 

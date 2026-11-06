@@ -1,15 +1,15 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import type { Ctx } from '../context'
-import { all, get, run, tx } from '../db'
-import { bad, conflict, notFound, parse } from '../http'
-import { requireRole } from '../auth'
-import { decisionSchema } from '../schemas'
-import { toJob, toLog, toReport, toUser, type JobRow, type LogRow, type ReportRow, type UserRow } from '../mappers'
-import { notify } from '../notify'
-import { computeRisk, type Risk } from '../../src/utils/risk'
+import { all, get, run, tx } from '../db.js'
+import { bad, conflict, notFound, parse } from '../http.js'
+import { requireRole } from '../auth.js'
+import { decisionSchema } from '../schemas.js'
+import { toJob, toLog, toReport, toUser, type JobRow, type LogRow, type ReportRow, type UserRow } from '../mappers.js'
+import { notify } from '../notify.js'
+import { computeRisk, type Risk } from '../../src/utils/risk.js'
 import type { Job, ModerationEntry, User } from '../../src/types'
-import { addLog } from './moderationLog'
+import { addLog } from './moderationLog.js'
 
 export const MIN_REASON = 10
 export function adminRoutes(ctx: Ctx) {

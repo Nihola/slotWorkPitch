@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { all, get, run, type DB } from './db'
+import { all, get, run, type DB } from './db.js'
 import type { NotificationCategory } from '../src/types'
 
 export type PrefKey = 'applications' | 'messages' | 'jobs' | 'interviews'

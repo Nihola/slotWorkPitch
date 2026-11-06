@@ -1,5 +1,5 @@
-import { loadConfig } from './config'
-import { createApp } from './app'
+import { loadConfig } from './config.js'
+import { createApp } from './app.js'
 
 const cfg = loadConfig()
 const { app, close } = await createApp(cfg)
